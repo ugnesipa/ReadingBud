@@ -6,6 +6,7 @@ const csv = require("csv-parser"); // Importing csv-parser to parse CSV files
 const User = require("../models/user.model"); // Importing the User model
 const Book = require("../models/book.model"); // Importing the Book model
 const Review = require("../models/review.model"); // Importing the Review model
+const Collection = require("../models/collection.model"); // Importing the Collection model
 const bcrypt = require("bcryptjs"); // Importing bcryptjs for password hashing
 require("dotenv").config(); // Loading environment variables from .env file
 
@@ -67,10 +68,11 @@ const seedDB = async () => {
     console.log("Connected to development database.");
 
     console.log("Deleting existing data...");
-    // Delete all existing users, books, and reviews from the database before seeding new data
+    // Delete all existing users, books, reviews, and collections from the database before seeding new data
     await User.deleteMany();
     await Book.deleteMany();
     await Review.deleteMany();
+    await Collection.deleteMany();
     console.log("All existing data deleted.");
 
     console.log("Seeding users...");

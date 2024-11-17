@@ -56,5 +56,6 @@ router.post("/:id/follow", loginRequired, followUser); // Follow a user
 // The loginRequired middleware ensures the user is logged in before unfollowing another user
 router.post("/:id/unfollow", loginRequired, unfollowUser); // Unfollow a user
 
+
 // Exporting the router to be used in other parts of the application
 module.exports = router;

@@ -58,6 +58,10 @@ const userSchema = new Schema(
       type: Schema.Types.ObjectId, // Array of ObjectIds referencing other "User" models
       ref: "User", // Reference to the "User" model
     }],
+    collections: [{ 
+      type: Schema.Types.ObjectId, // Array of ObjectIds referencing other "User" models
+      ref: "Collection", // Reference to the "User" model
+    }],
   },
   { timestamps: true } // Automatically adds createdAt and updatedAt fields to the document
 );

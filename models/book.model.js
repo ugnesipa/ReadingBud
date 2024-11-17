@@ -38,6 +38,10 @@ const bookSchema = new Schema(
         ref: 'Review', // Reference to the "Review" model
       },
     ],
+    collections: [{ 
+      type: Schema.Types.ObjectId, // Array of ObjectIds referencing other "User" models
+      ref: "Collection", // Reference to the "User" model
+    }],
   },
   {
     timestamps: true, // Automatically adds `createdAt` and `updatedAt` timestamps to the document

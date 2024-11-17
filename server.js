@@ -58,6 +58,7 @@ app.use((req, res, next) => {
 app.use('/api/users', require('./routes/users')); // Route for user-related actions (e.g., authentication, registration)
 app.use('/api/books', require('./routes/books')); // Route for book-related actions (e.g., listing, adding books)
 app.use('/api/reviews', require('./routes/reviews')); // Route for review-related actions (e.g., creating, editing reviews)
+app.use('/api/collections', require('./routes/collections')); // Route for collection-related actions (e.g., creating, editing reviews)
 
 // Start the Express server and listen for requests on the specified port
 app.listen(port, () => {

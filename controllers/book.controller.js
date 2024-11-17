@@ -4,6 +4,7 @@ const Review = require("../models/review.model"); // Review model for managing a
 const multer = require('multer'); // Multer for handling file uploads
 const fs = require('fs'); // File system module for managing file operations
 const path = require('path'); // Path module for handling file paths
+const Collection = require("../models/collection.model"); // Book model
 
 // Configure storage for multer
 const storage = multer.diskStorage({
@@ -43,6 +44,10 @@ const readAll = (req, res) => {
       path: 'reviews', // Populate associated reviews
       select: '_id rating title user', // Select specific review fields to avoid deep nesting
     })
+    .populate({
+      path: 'collections', // Populate associated collections
+      select: '_id name', // Select specific collection fields
+    })
     .then((data) => {
       console.log(data);
       if (data.length > 0) {
@@ -66,6 +71,10 @@ const readOne = (req, res) => {
       path: 'reviews', // Populate associated reviews
       select: '_id rating title user', // Select specific review fields
     })
+    .populate({
+      path: 'collections', // Populate associated collections
+      select: '_id name', // Select specific collection fields
+    })
     .then((data) => {
       if (!data) {
         return res.status(404).json({
@@ -84,7 +93,7 @@ const readOne = (req, res) => {
           message: `Book with id ${id} was not found`,
         });
       }
-      return res.status(500).json(err); // Handle server errors
+      return res.status(500).json({ message: "Error retrieving books", error: err.message }); // Handle server errors
     });
 };
 
@@ -160,7 +169,6 @@ const createData = (req, res) => {
   });
 };
 
-// Update an existing book by its ID
 const updateData = (req, res) => {
   const id = req.params.id;
 
@@ -174,18 +182,8 @@ const updateData = (req, res) => {
 
     const updates = req.body;
 
-    // Define allowed fields for updates
-    const allowedFields = [
-      "title",
-      "author",
-      "publishing_date",
-      "image_path_S",
-      "image_path_M",
-      "image_path_L",
-    ];
-
     try {
-      const book = await Book.findById(id); // Find the book to retrieve existing data
+      const book = await Book.findById(id).populate('collections'); // Include associated collections
       if (!book) {
         return res.status(404).json({
           message: `Book with id ${id} not found`,
@@ -220,6 +218,16 @@ const updateData = (req, res) => {
         runValidators: true, // Validate the updates
       });
 
+      // Update the book details in all associated collections
+      const collections = book.collections;
+      for (const collection of collections) {
+        const bookIndex = collection.books.findIndex((b) => b.toString() === id);
+        if (bookIndex !== -1) {
+          collection.books[bookIndex] = updatedBook._id; // Update reference
+        }
+        await collection.save(); // Save updated collection
+      }
+
       return res.status(200).json({
         message: `Book with id ${id} updated successfully`,
         data: updatedBook,
@@ -234,16 +242,23 @@ const updateData = (req, res) => {
   });
 };
 
-// Delete a book and its associated reviews
 const deleteData = (req, res) => {
   const id = req.params.id;
 
   Book.findById(id)
-    .then((book) => {
+    .populate('collections') // Include associated collections
+    .then(async (book) => {
       if (!book) {
         return res.status(404).json({
           message: `Book with id ${id} was not found`,
         });
+      }
+
+      // Remove the book from associated collections
+      const collections = book.collections;
+      for (const collection of collections) {
+        collection.books = collection.books.filter((b) => b.toString() !== id);
+        await collection.save(); // Save updated collection
       }
 
       // Delete associated images

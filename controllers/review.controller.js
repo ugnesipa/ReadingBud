@@ -22,7 +22,7 @@ const readAll = (req, res) => {
     })
     .catch((err) => {
       console.log(err);
-      return res.status(500).json(err); // Handle and return server errors
+      return res.status(500).json({ message: "Error retrieving collections", error: err.message }); // Handle and return server errors
     });
 
   // Uncomment the below code for testing without a database

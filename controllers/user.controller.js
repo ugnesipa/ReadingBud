@@ -4,6 +4,7 @@ const bcrypt = require("bcryptjs"); // For hashing passwords
 const User = require("../models/user.model"); // User model
 const Review = require("../models/review.model"); // Review model
 const Book = require("../models/book.model"); // Book model
+const Collection = require("../models/collection.model"); // Book model
 
 // Function to retrieve all users
 const readAll = async (req, res) => {
@@ -22,6 +23,10 @@ const readAll = async (req, res) => {
       .populate({
         path: 'followers', // Populate followers list
         select: '_id full_name' // Select specific fields
+      })
+      .populate({
+        path: 'collections', // Populate associated collections
+        select: '_id name', // Select specific collection fields
       });
 
     // Check if any users exist and return response
@@ -55,7 +60,12 @@ const readOne = async (req, res) => {
       .populate({
         path: 'followers', // Populate followers list
         select: '_id full_name' // Select specific fields
+      })
+      .populate({
+        path: 'collections', // Populate associated collections
+        select: '_id name', // Select specific collection fields
       });
+      
 
     // Check if user exists and return response
     if (!user) {
@@ -223,17 +233,17 @@ const unfollowUser = async (req, res) => {
   }
 };
 
-// Function to delete the currently authenticated user
+// Function to delete the authenticated user
 const deleteUser = async (req, res) => {
   try {
     const userId = req.user._id; // Get authenticated user's ID
 
-    const user = await User.findById(userId); // Find the user
+    const user = await User.findById(userId).populate('collections'); // Find user with populated collections
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // Find and delete user's reviews from books
+    // Delete user's reviews and update books
     const userReviews = await Review.find({ user: userId });
     const reviewIds = userReviews.map((review) => review._id);
 
@@ -248,10 +258,35 @@ const deleteUser = async (req, res) => {
     );
 
     await Review.deleteMany({ user: userId }); // Delete user's reviews
+
+    // Delete user's collections and update books
+    const userCollections = user.collections;
+    await Promise.all(
+      userCollections.map(async (collection) => {
+        await Book.updateMany(
+          { collections: collection._id },
+          { $pull: { collections: collection._id } } // Remove collection from books
+        );
+      })
+    );
+
+    // Delete collections themselves
+    await Collection.deleteMany({ _id: { $in: userCollections.map(c => c._id) } });
+
+    // Remove user from other users' following/followers lists
+    await User.updateMany(
+      { following: userId },
+      { $pull: { following: userId } }
+    );
+    await User.updateMany(
+      { followers: userId },
+      { $pull: { followers: userId } }
+    );
+
     await User.findByIdAndDelete(userId); // Delete the user
 
     return res.status(200).json({
-      message: "User account and associated data deleted successfully.",
+      message: "User account, collections, and associated data deleted successfully.",
     });
   } catch (err) {
     console.error("Error deleting user:", err);
@@ -267,12 +302,13 @@ const deleteData = async (req, res) => {
   try {
     const userIdToDelete = req.params.id; // User ID to delete
 
-    const userToDelete = await User.findById(userIdToDelete); // Find the user to delete
+    const userToDelete = await User.findById(userIdToDelete).populate('collections'); // Find user with populated collections
     if (!userToDelete) {
       return res.status(404).json({ message: `User with ID ${userIdToDelete} not found` });
     }
 
-    const userReviews = await Review.find({ user: userIdToDelete }); // Find user's reviews
+    // Delete user's reviews and update books
+    const userReviews = await Review.find({ user: userIdToDelete });
     const reviewIds = userReviews.map((review) => review._id);
 
     await Promise.all(
@@ -286,10 +322,35 @@ const deleteData = async (req, res) => {
     );
 
     await Review.deleteMany({ user: userIdToDelete }); // Delete user's reviews
+
+    // Delete user's collections and update books
+    const userCollections = userToDelete.collections;
+    await Promise.all(
+      userCollections.map(async (collection) => {
+        await Book.updateMany(
+          { collections: collection._id },
+          { $pull: { collections: collection._id } } // Remove collection from books
+        );
+      })
+    );
+
+    // Delete collections themselves
+    await Collection.deleteMany({ _id: { $in: userCollections.map(c => c._id) } });
+
+    // Remove user from other users' following/followers lists
+    await User.updateMany(
+      { following: userIdToDelete },
+      { $pull: { following: userIdToDelete } }
+    );
+    await User.updateMany(
+      { followers: userIdToDelete },
+      { $pull: { followers: userIdToDelete } }
+    );
+
     await User.findByIdAndDelete(userIdToDelete); // Delete the user
 
     return res.status(200).json({
-      message: `User with ID ${userIdToDelete} and their associated reviews have been deleted successfully.`,
+      message: `User with ID ${userIdToDelete}, their collections, and associated data deleted successfully.`,
     });
   } catch (err) {
     console.error("Error deleting user:", err);
